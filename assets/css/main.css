@@ -429,6 +429,106 @@ strong, b { color: var(--ink); font-weight: 700; }
 
 .hero-in { position: relative; z-index: 2; width: 100%; }
 
+/* Duas colunas no desktop: texto a esquerda, maquina 3D a direita */
+.hero-grid { position: relative; z-index: 2; display: grid; gap: clamp(2rem, 4vw, 3.5rem); align-items: center; }
+/* Os numeros ficam abaixo das duas colunas */
+.hero-grid > .hero-stats { grid-column: 1 / -1; margin-top: 0; }
+@media (min-width: 1024px) {
+  .hero-grid { grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr); }
+}
+
+/* ------------------------------------------------------------
+   HERO 3D
+   ------------------------------------------------------------ */
+.hero3d {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  min-height: 260px;
+  max-height: 62svh;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 38%, rgba(255, 255, 255, 0.42), transparent 70%),
+    linear-gradient(180deg, var(--g-50), var(--g-100));
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  touch-action: pan-y;             /* o dedo rola a pagina; a 3D nao sequestra o scroll */
+  -webkit-user-select: none;
+  user-select: none;
+  contain: paint;
+}
+.hero3d canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+.hero3d canvas:active { cursor: grabbing; }
+/* Sem WebGL ou com erro no modelo: o bloco some e o hero volta ao layout original */
+.hero3d.is-off { display: none; }
+
+/* Vinheta para o modelo nao encostar nas bordas do quadro */
+.hero3d::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 78% 70% at 50% 45%, transparent 55%, rgba(155, 163, 158, 0.28) 100%);
+}
+
+.hero3d-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.85rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  background: linear-gradient(180deg, transparent, rgba(176, 181, 178, 0.92) 55%);
+  pointer-events: none;
+}
+.hero3d-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 34px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line-2);
+  border-radius: 99px;
+  background: var(--white);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.hero3d-btn svg { width: 12px; height: 12px; }
+.hero3d-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+.hero3d-btn[data-state="off"] { border-color: var(--lime); color: var(--green-dark); }
+
+.hero3d-hint {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.85rem;
+  z-index: 2;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-4);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.hero3d.is-ready .hero3d-hint { opacity: 0.55; }
+
+/* Sem movimento reduzido o quadro fica com a maquina parada e sem dica */
+@media (prefers-reduced-motion: reduce) {
+  .hero3d-hint { display: none; }
+}
+
 .hero-badge {
   display: inline-flex;
   align-items: center;
@@ -1640,6 +1740,8 @@ strong, b { color: var(--ink); font-weight: 700; }
 }
 
 @media (max-width: 1023px) {
+  /* Hero vira uma coluna: texto, maquina 3D, numeros */
+  .hero3d { order: 3; aspect-ratio: 16 / 10; min-height: 0; max-height: 46svh; }
   .split { grid-template-columns: 1fr; }
   .split--rev > *:first-child { order: 0; }
   .ct-grid { grid-template-columns: 1fr; }

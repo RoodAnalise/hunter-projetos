@@ -93,8 +93,9 @@
 <main id="conteudo">
   <!-- ======================= HERO ======================= -->
   <section class="hero">
-<div class="wrap hero-in">
-      <div class="hero-badge">
+    <div class="wrap hero-grid">
+      <div class="hero-in">
+        <div class="hero-badge">
         <span class="pulse" aria-hidden="true"></span>
         <span class="mono">Engenharia mecânica · Automação · Projeto</span>
       </div>
@@ -117,6 +118,21 @@
           <span>Solicitar projeto</span>
         </a>
       </div>
+      </div>
+
+      <!-- Maquina em 3D: representacao da linha de laminacao -->
+      <figure class="hero3d" id="hero3d">
+        <canvas data-hero3d-canvas aria-label="Modelo 3D interativo de uma linha de transporte de pacotes" role="img"></canvas>
+        <figcaption class="hero3d-bar mono">
+          <span data-hero3d-status>Carregando modelo 3D</span>
+          <button class="hero3d-btn" type="button" data-hero3d-toggle aria-pressed="true">
+            <svg aria-hidden="true"><use href="#i-pause"></use></svg>
+            <span>Pausar</span>
+          </button>
+        </figcaption>
+        <span class="hero3d-hint mono" aria-hidden="true">Arraste para girar</span>
+      </figure>
+
       <div class="hero-stats">
         <div class="hero-stat">
           <b><span data-count="47">0</span></b>
@@ -477,5 +493,9 @@
 
 <script src="assets/js/data.js"></script>
 <script src="assets/js/main.js"></script>
+<script src="assets/vendor/three/three.min.js" defer></script>
+<script src="assets/vendor/three/GLTFLoader.js" defer></script>
+<script src="assets/vendor/three/OrbitControls.js" defer></script>
+<script src="assets/js/hero3d.js" defer></script>
 </body>
 </html>
