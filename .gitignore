@@ -1,0 +1,27 @@
+# Ferramentas de desenvolvimento (nao vao para o servidor)
+_dev/
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Node
+node_modules/
+package-lock.json
+
+# Imagens de produto caso sejam migradas para o repo (mantidas no servidor)
+assets/img/produtos/
+
+# Nunca commitar segredos
+.env
+.env.*
+*.key
+*.pem
+credentials.json
