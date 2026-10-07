@@ -435,6 +435,11 @@ strong, b { color: var(--ink); font-weight: 700; }
 .hero-grid > .hero-stats { grid-column: 1 / -1; margin-top: 0; }
 @media (min-width: 1024px) {
   .hero-grid { grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr); }
+  /* Com a coluna 3D ao lado, o titulo precisa caber na metade da tela.
+     Sem isto a palavra "industria girar" (que nao quebra linha) invade o
+     quadro da maquina. */
+  .hero-grid .hero h1 { font-size: clamp(2.6rem, 1rem + 4.4vw, 5.4rem); }
+  .hero-grid .hero-sub { font-size: var(--t-base); }
 }
 
 /* ------------------------------------------------------------
@@ -582,6 +587,12 @@ strong, b { color: var(--ink); font-weight: 700; }
   display: inline-block;
   color: var(--green);
   white-space: nowrap;
+  max-width: 100%;
+}
+/* Column estreita: a palavra-chave deixa de ser indivisivel para nao
+   vazar para fora do bloco de texto */
+@media (max-width: 1279px) {
+  .hero h1 .hl { white-space: normal; }
 }
 .hero h1 .hl::after {
   content: "";

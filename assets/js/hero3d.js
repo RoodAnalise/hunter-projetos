@@ -136,21 +136,40 @@
 
     maxDim = Math.max(size.x, size.y, size.z) || 1;
 
-    // A maquina e longa e baixa. A esfera envolvente contem muito ar em cima e
-    // embaixo, entao o enquadramento usa a projecao da maquina no plano de
-    // visao e sobe um pouco a camera para a diagonal caber na caixa.
-    const vFov = (camera.fov * Math.PI) / 180;
-    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-    // Vista isometrica (diagonal 1,0.78,1) e a soma das projecoes dos lados
-    const diag = Math.hypot(size.x, size.z) * 0.82 + size.y * 0.6;
-    const dist = Math.max(diag / Math.tan(hFov / 2), diag / Math.tan(vFov / 2)) * 0.62;
+    /* Enquadramento: a maquina e longa e baixa (7 x 0,5 x 4), entao a esfera
+       envolvente desperdicaria metade do quadro. Aqui a conta e feita direto:
+       mede-se quanto a maquina ocupa da tela e afasta-se a camera ate caber. */
+    const tanV = Math.tan((camera.fov * Math.PI) / 180 / 2);
+    const tanH = tanV * camera.aspect;
+    const dir = new THREE.Vector3(1, 0.72, 1).normalize();
+    const look = new THREE.Vector3(0, size.y * 0.05, 0);
 
-    const dir = new THREE.Vector3(1, 0.78, 1).normalize();
-    camera.position.copy(dir).multiplyScalar(dist);
-    camera.near = Math.max(0.001, dist / 800);
-    camera.far = dist * 80;
+    // Eixo da camera: -Z aponta para o alvo, X e Y sao os laterais da tela
+    const fwd = look.clone().sub(dir).normalize();
+    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+    const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+
+    // Maior extensao lateral e vertical dos 8 cantos da caixa
+    let halfW = 0;
+    let halfH = 0;
+    const corner = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) {
+      corner.set(
+        (i & 1 ? 0.5 : -0.5) * size.x,
+        (i & 2 ? 0.5 : -0.5) * size.y,
+        (i & 4 ? 0.5 : -0.5) * size.z
+      );
+      halfW = Math.max(halfW, Math.abs(corner.dot(right)));
+      halfH = Math.max(halfH, Math.abs(corner.dot(up)));
+    }
+
+    // Distancia para a semi-extensao caber na semi-tela
+    const dist = Math.max(halfW / tanH, halfH / tanV) * 1.1;
+    camera.position.copy(dir).multiplyScalar(dist).add(look);
+    camera.near = Math.max(0.001, dist / 400);
+    camera.far = dist * 60;
     camera.updateProjectionMatrix();
-    controls.target.set(0, size.y * 0.06, 0);
+    controls.target.copy(look);
     controls.update();
 
     grid.position.y = -size.y / 2 - maxDim * 0.004;
