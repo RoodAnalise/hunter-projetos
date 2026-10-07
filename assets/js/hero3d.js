@@ -87,17 +87,11 @@
   let model = null;
   let maxDim = 1;
 
-  /* Modelo original em Draco, o mesmo arquivo que o site da Tornaria Zico usa.
-   O DRACOLoader decodifica num Worker via blob:, liberado pela diretiva
-   worker-src da CSP; o decoder e auto-hospedado em assets/vendor/three/draco.
-   Nao ha versao reduzida: a geometria tem pontos extremos que impedem o
-   meshopt de simplificar, e cortar a geometria quebrava pecas da maquina. */
+  /* O GLB vai sem compressao e sem nenhuma extensao: assim o three le
+   nativamente, sem DRACOLoader -- que roda num Worker via blob: e exigiria
+   abrir a CSP -- e sem mexer na CSP. Como o arquivo original em Draco
+   ficava em 6,7 MB e o sem compressao em 6,2 MB, a compressao nao compensava. */
 const loader = new THREE.GLTFLoader();
-if (window.THREE.DRACOLoader) {
-  const draco = new THREE.DRACOLoader();
-  draco.setDecoderPath("assets/vendor/three/draco/");
-  loader.setDRACOLoader(draco);
-}
 
 const SRC_MODEL = "assets/models/hero.glb";
 
@@ -111,7 +105,43 @@ loader.load(SRC_MODEL, onModel, onProgress, onError);
 
   function onError(err) {
     host.classList.add("is-fallback");
-    if (status) status.textContent = "ERRO: " + ((err && err.message) || String(err) || "?").slice(0, 120);
+    if (status) status.textContent = "";
+  }
+
+  /* Caixa que contem 96% dos vertices, em vez da que contem 100%.
+     Ignora as pecas soltas sem precisar recortar a geometria -- cortar
+     quebrava partes de verdade da maquina. */
+  function robustBox(root) {
+    const cols = [[], [], []];
+    const v = new THREE.Vector3();
+    let total = 0;
+
+    root.updateMatrixWorld(true);
+    root.traverse(o => {
+      if (!o.isMesh) return;
+      const pos = o.geometry.getAttribute("POSITION");
+      if (!pos) return;
+      total += pos.count;
+      const step = Math.max(1, Math.floor(pos.count / 1500));  // amostra
+      for (let i = 0; i < pos.count; i += step) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        cols[0].push(v.x); cols[1].push(v.y); cols[2].push(v.z);
+      }
+    });
+
+    if (!total) return new THREE.Box3().setFromObject(root);
+
+    const q = (c, p) => {
+      c.sort((a, b) => a - b);
+      return c[Math.floor((p / 100) * (c.length - 1))];
+    };
+    const lo = cols.map(c => q(c, 2));
+    const hi = cols.map(c => q(c, 98));
+    const pad = cols.map((c, i) => Math.max((hi[i] - lo[i]) * 0.03, 1e-4));
+    return new THREE.Box3(
+      new THREE.Vector3(lo[0] - pad[0], lo[1] - pad[1], lo[2] - pad[2]),
+      new THREE.Vector3(hi[0] + pad[0], hi[1] + pad[1], hi[2] + pad[2])
+    );
   }
 
   function onModel(gltf) {
@@ -149,23 +179,44 @@ loader.load(SRC_MODEL, onModel, onProgress, onError);
     );
     model.updateMatrixWorld(true);
 
-    /* Enquadramento pela esfera envolvente, que e o que funciona para este
-       tipo de objeto: garante folga igual em qualquer angulo de giro. */
-    const fit = new THREE.Box3().setFromObject(model);
-    const sphere = fit.getBoundingSphere(new THREE.Sphere());
-    const radius = Math.max(sphere.radius, 0.001);
-
+    /* Enquadramento por percentis, e nao pela caixa completa. O arquivo tem
+       pecas soltas (motor, redutor) longe do corpo da maquina; elas inflariam a
+       bbox e deixariam a esteira pequena no meio do quadro. */
     const vFov = (camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(camera.aspect, 0.4));
-    const dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 0.86;
+    const dir = new THREE.Vector3(1, 0.72, 1).normalize();
+
+    const tight = robustBox(model);
+    const look = tight.getCenter(new THREE.Vector3());
+    const half = tight.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+
+    // Eixos da camera, para medir quanto a maquina ocupa de cada lado
+    const fwd = look.clone().sub(dir).normalize();
+    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+    const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+
+    let halfW = 0;
+    let halfH = 0;
+    const corner = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) {
+      corner.set(
+        (i & 1 ? 0.5 : -0.5) * half.x * 2,
+        (i & 2 ? 0.5 : -0.5) * half.y * 2,
+        (i & 4 ? 0.5 : -0.5) * half.z * 2
+      );
+      halfW = Math.max(halfW, Math.abs(corner.dot(right)));
+      halfH = Math.max(halfH, Math.abs(corner.dot(up)));
+    }
+
+    const dist = Math.max(halfW / Math.tan(hFov / 2), halfH / Math.tan(vFov / 2)) * 1.12;
+    const radius = Math.max(halfW, halfH);
 
     controls.minDistance = radius * 0.12;
     controls.maxDistance = dist * 8;
-    controls.target.copy(sphere.center);
+    controls.target.copy(look);
 
     // Vista isometrica: a diagonal mostra as tres correntes e o motorredutor
-    const dir = new THREE.Vector3(1, 0.72, 1).normalize();
-    camera.position.copy(sphere.center).add(dir.multiplyScalar(dist));
+    camera.position.copy(look).add(dir.multiplyScalar(dist));
     camera.near = Math.max(0.01, dist / 500);
     camera.far = dist * 40;
     camera.updateProjectionMatrix();
