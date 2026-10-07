@@ -87,11 +87,15 @@
   let model = null;
   let maxDim = 1;
 
-  /* O GLB vai sem compressao e sem nenhuma extensao: assim o three le
-   nativamente, sem DRACOLoader -- que roda num Worker via blob: e exigiria
-   abrir a CSP -- e sem mexer na CSP. Como o arquivo original em Draco
-   ficava em 6,7 MB e o sem compressao em 6,2 MB, a compressao nao compensava. */
+  /* Modelo original em Draco -- 1,28 mil triangulos, 6,7 MB. E o mesmo arquivo do
+   site da Tornaria Zico, sem reducao: as versoes simplificadas que testei
+   perdiam detalhe visivel das correntes e do motorredutor. */
 const loader = new THREE.GLTFLoader();
+if (window.THREE.DRACOLoader) {
+  const draco = new THREE.DRACOLoader();
+  draco.setDecoderPath("assets/vendor/three/draco/");
+  loader.setDRACOLoader(draco);
+}
 
 const SRC_MODEL = "assets/models/hero.glb";
 
