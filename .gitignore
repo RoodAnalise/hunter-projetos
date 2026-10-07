@@ -16,8 +16,8 @@ $RECYCLE.BIN/
 node_modules/
 package-lock.json
 
-# Imagens de produto caso sejam migradas para o repo (mantidas no servidor)
-assets/img/produtos/
+# Fotos de produto: agora moram no proprio repo (assets/img/produtos/), o que
+# resolveu as imagens travadas no celular. Nada a ignorar aqui.
 
 # Nunca commitar segredos
 .env

@@ -4,7 +4,17 @@
    data.js
    ============================================================ */
 
-const IMG_BASE = "https://www.hunterprojetos.com.br/admin/arquivos/produtos/";
+/* Fotos auto-hospedadas em assets/img/produtos/ (1,35 MB no total).
+   Antes vinham de www.hunterprojetos.com.br: no celular a imagem externa
+   demorava e o card ficava no esqueleto cinza. Mesma origem = mesma CDN.
+
+   O caminho e derivado da URL deste proprio script, e nao escrito a mao: as
+   paginas ficam em / e tambem em /pages/, e um caminho relativo resolveria
+   errado em um dos dois. Este script esta em assets/js/ e as fotos em
+   assets/img/produtos/, entao sobe um nivel. */
+const SELF_DIR = (document.currentScript && document.currentScript.src || "")
+  .replace(/[^/]*$/, "");
+const IMG_BASE = SELF_DIR + "../img/produtos/";
 
 const CATEGORIAS = [
   {
@@ -60,7 +70,7 @@ const PRODUTOS = [
     code: "73004",
     name: "Redutor Acionamento Fusos",
     cat: "4",
-    file: "whatsapp_image_2026-04-27_at_10_09_04_(1).28_04_2026_13_39_32_mini.jpeg",
+    file: "whatsapp_image_2026-04-27_at_10_09_04__1_.28_04_2026_13_39_32_mini.jpeg",
     desc: "Redutor dedicado ao acionamento dos fusos do conjunto de abertura e fechamento.",
     tags: ["Redutor", "Fusos"],
     aplic: "Torno desfolhador"
@@ -96,7 +106,7 @@ const PRODUTOS = [
     code: "73017",
     name: "CLP — Controlador Lógico Programável HUNTER",
     cat: "4",
-    file: "whatsapp_image_2026-04-22_at_14_27_35_(3).23_04_2026_13_43_17_mini.jpeg",
+    file: "whatsapp_image_2026-04-22_at_14_27_35__3_.23_04_2026_13_43_17_mini.jpeg",
     desc: "Controlador lógico programável da linha HUNTER, com projeto elétrico e programa desenvolvido sob medida.",
     tags: ["CLP", "Automação", "Elétrica"],
     aplic: "Linha HUNTER"
@@ -213,7 +223,7 @@ const PRODUTOS = [
     code: "73131",
     name: "CLP — Controlador Lógico Programável HUNTER",
     cat: "4",
-    file: "whatsapp_image_2026-04-22_at_14_21_13_(1).23_04_2026_13_39_12_mini.jpeg",
+    file: "whatsapp_image_2026-04-22_at_14_21_13__1_.23_04_2026_13_39_12_mini.jpeg",
     desc: "Controlador lógico programável de reposição para painel HUNTER.",
     tags: ["CLP", "Automação"],
     aplic: "Painel de automação"
@@ -433,7 +443,7 @@ const PRODUTOS = [
     code: "I06",
     name: "Pré-prensa Hidráulica para Compensado",
     cat: "7",
-    file: "whatsapp_image_2026-04-07_at_15_02_51_(2).7_04_2026_18_19_09_mini.jpeg",
+    file: "whatsapp_image_2026-04-07_at_15_02_51__2_.7_04_2026_18_19_09_mini.jpeg",
     desc: "Pré-prensa hidráulica para prensagem inicial de compensado.",
     tags: ["Prensa", "Hidráulica", "Compensado"],
     aplic: "Prensagem"
