@@ -43,22 +43,24 @@
   renderer.toneMappingExposure = 1.15;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(34, 1, 1, 4000);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 5000);
 
-  /* ---------- Iluminacao ---------- */
-  scene.add(new THREE.HemisphereLight(0xdfe8e2, 0x2a332f, 0.62));
+  /* ---------- Iluminacao ----------
+     Tres pontos + ambiente: sem isso os metais escurecem e a maquica perde
+     os detalhes. A luz de recorte fria separa oaco do fundo claro. */
+  scene.add(new THREE.HemisphereLight(0xe8f0f5, 0x35423c, 1.5));
 
-  const key = new THREE.DirectionalLight(0xffffff, 1.15);
-  key.position.set(1.1, 1.5, 1);
+  const key = new THREE.DirectionalLight(0xffffff, 2.1);
+  key.position.set(5, 8, 6);
   scene.add(key);
 
-  const rim = new THREE.DirectionalLight(0xbfe8cf, 0.75);
-  rim.position.set(-1.2, 0.6, -1.1);
+  const rim = new THREE.DirectionalLight(0xcfe6ff, 1.15);
+  rim.position.set(-6, 3, -5);
   scene.add(rim);
 
-  const bounce = new THREE.DirectionalLight(0xffffff, 0.32);
-  bounce.position.set(0.2, -1, 0.4);
-  scene.add(bounce);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.7);
+  fill.position.set(-3, -2, 6);
+  scene.add(fill);
 
   /* ---------- Piso: apenas uma malha de referencia discreta ---------- */
   const grid = new THREE.GridHelper(1, 20, 0x0b4f30, 0x9ba39e);
@@ -85,18 +87,21 @@
   let model = null;
   let maxDim = 1;
 
-  const loader = new THREE.GLTFLoader();
-  // Sem compressor: o GLB ja vem quantizado (KHR_mesh_quantization), entao
-  // nenhum Worker/blob e necessario e a CSP restritiva do site continua valendo.
-  // O modelo completo so entra em telas grandes e com folga de memoria.
-  const heavy =
-    !COARSE.matches &&
-    innerWidth >= 1024 &&
-    (navigator.deviceMemory || 4) >= 8 &&
-    (navigator.hardwareConcurrency || 4) >= 8;
-  const SRC_MODEL = heavy ? "assets/models/esteira-full.glb" : "assets/models/esteira-lite.glb";
+  /* Modelo original em Draco, o mesmo arquivo que o site da Tornaria Zico usa.
+   O DRACOLoader decodifica num Worker via blob:, liberado pela diretiva
+   worker-src da CSP; o decoder e auto-hospedado em assets/vendor/three/draco.
+   Nao ha versao reduzida: a geometria tem pontos extremos que impedem o
+   meshopt de simplificar, e cortar a geometria quebrava pecas da maquina. */
+const loader = new THREE.GLTFLoader();
+if (window.THREE.DRACOLoader) {
+  const draco = new THREE.DRACOLoader();
+  draco.setDecoderPath("assets/vendor/three/draco/");
+  loader.setDRACOLoader(draco);
+}
 
-  loader.load(SRC_MODEL, onModel, onProgress, onError);
+const SRC_MODEL = "assets/models/hero.glb";
+
+loader.load(SRC_MODEL, onModel, onProgress, onError);
 
   function onProgress(ev) {
     if (!ev.total || !status) return;
@@ -104,76 +109,71 @@
     status.textContent = "Carregando modelo 3D " + pct + "%";
   }
 
-  function onError() {
+  function onError(err) {
     host.classList.add("is-fallback");
-    if (status) status.textContent = "";
+    if (status) status.textContent = "ERRO: " + ((err && err.message) || String(err) || "?").slice(0, 120);
   }
 
   function onModel(gltf) {
     model = gltf.scene;
 
-    // O arquivo nao tem normais (foram removidas na otimizacao): recalcula.
+    /* As cores e o acabamento originais sao preservados: e o que faz o modelo
+       parecer com a maquina real. So o acabamento e ajustado, porque os
+       materiais vieram sem envMap e ficariam escuros. */
     model.traverse(o => {
       if (!o.isMesh) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       mats.forEach(m => {
         if (!m) return;
-        m.flatShading = false;
-        m.side = THREE.DoubleSide;
-        m.color.setHex(0x8e9a94);
-        m.metalness = 0.55;
-        m.roughness = 0.48;
+        m.side = THREE.FrontSide;
+        m.metalness = m.metalness != null ? m.metalness : 0.4;
+        m.roughness = m.roughness != null ? m.roughness : 0.55;
+        m.envMapIntensity = 0.6;
       });
-      if (!o.geometry.getAttribute("normal")) o.geometry.computeVertexNormals();
     });
 
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
-    model.position.sub(center);
+    /* Normaliza a escala (o arquivo vem em mm, com a maquina gigante) e apoia
+       no chao, para o enquadramento nao depender da unidade do SolidWorks. */
+    const TARGET = 4;
+    maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const autoScale = TARGET / maxDim;
+    model.scale.setScalar(autoScale);
+    model.position.set(
+      -center.x * autoScale,
+      -box.min.y * autoScale,
+      -center.z * autoScale
+    );
     model.updateMatrixWorld(true);
 
-    maxDim = Math.max(size.x, size.y, size.z) || 1;
+    /* Enquadramento pela esfera envolvente, que e o que funciona para este
+       tipo de objeto: garante folga igual em qualquer angulo de giro. */
+    const fit = new THREE.Box3().setFromObject(model);
+    const sphere = fit.getBoundingSphere(new THREE.Sphere());
+    const radius = Math.max(sphere.radius, 0.001);
 
-    /* Enquadramento: a maquina e longa e baixa (7 x 0,5 x 4), entao a esfera
-       envolvente desperdicaria metade do quadro. Aqui a conta e feita direto:
-       mede-se quanto a maquina ocupa da tela e afasta-se a camera ate caber. */
-    const tanV = Math.tan((camera.fov * Math.PI) / 180 / 2);
-    const tanH = tanV * camera.aspect;
+    const vFov = (camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(camera.aspect, 0.4));
+    const dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 0.86;
+
+    controls.minDistance = radius * 0.12;
+    controls.maxDistance = dist * 8;
+    controls.target.copy(sphere.center);
+
+    // Vista isometrica: a diagonal mostra as tres correntes e o motorredutor
     const dir = new THREE.Vector3(1, 0.72, 1).normalize();
-    const look = new THREE.Vector3(0, size.y * 0.05, 0);
-
-    // Eixo da camera: -Z aponta para o alvo, X e Y sao os laterais da tela
-    const fwd = look.clone().sub(dir).normalize();
-    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
-    const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
-
-    // Maior extensao lateral e vertical dos 8 cantos da caixa
-    let halfW = 0;
-    let halfH = 0;
-    const corner = new THREE.Vector3();
-    for (let i = 0; i < 8; i++) {
-      corner.set(
-        (i & 1 ? 0.5 : -0.5) * size.x,
-        (i & 2 ? 0.5 : -0.5) * size.y,
-        (i & 4 ? 0.5 : -0.5) * size.z
-      );
-      halfW = Math.max(halfW, Math.abs(corner.dot(right)));
-      halfH = Math.max(halfH, Math.abs(corner.dot(up)));
-    }
-
-    // Distancia para a semi-extensao caber na semi-tela
-    const dist = Math.max(halfW / tanH, halfH / tanV) * 1.1;
-    camera.position.copy(dir).multiplyScalar(dist).add(look);
-    camera.near = Math.max(0.001, dist / 400);
-    camera.far = dist * 60;
+    camera.position.copy(sphere.center).add(dir.multiplyScalar(dist));
+    camera.near = Math.max(0.01, dist / 500);
+    camera.far = dist * 40;
     camera.updateProjectionMatrix();
-    controls.target.copy(look);
     controls.update();
 
-    grid.position.y = -size.y / 2 - maxDim * 0.004;
-    grid.scale.setScalar(maxDim * 0.26);
+    // Malha de referencia no piso, logo abaixo da maquina
+    grid.position.y = -TARGET * 0.004;
+    grid.scale.setScalar(TARGET * 0.5);
     grid.visible = true;
 
     scene.add(model);

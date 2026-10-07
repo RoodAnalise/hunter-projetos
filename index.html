@@ -2,7 +2,13 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.hunterprojetos.com.br; connect-src 'self'; frame-src https://www.google.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.hunterprojetos.com.br; connect-src 'self'; frame-src https://www.google.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<!--
+  A CSP acima precisa de worker-src blob: porque o decodificador Draco do three
+  roda num Worker criado a partir de um Blob. Sem essa diretiva o modelo nunca
+  carrega._blob: e restrito ao proprio script do site -- nada externo entra.
+  As demais paginas do site mantem a CSP original.
+-->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hunter Engenharia e Projetos — Projetos, Automação e Linhas Industriais</title>
 <meta name="description" content="Engenharia, projetos e fabricação de linhas de laminação, máquinas importadas, automação industrial e peças de reposição. Hunter Engenharia e Projetos, Timbó — SC.">
@@ -495,6 +501,7 @@
 <script src="assets/js/main.js"></script>
 <script src="assets/vendor/three/three.min.js" defer></script>
 <script src="assets/vendor/three/GLTFLoader.js" defer></script>
+<script src="assets/vendor/three/DRACOLoader.js" defer></script>
 <script src="assets/vendor/three/OrbitControls.js" defer></script>
 <script src="assets/js/hero3d.js" defer></script>
 </body>
