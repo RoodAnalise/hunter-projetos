@@ -88,8 +88,12 @@
   let maxDim = 1;
 
   /* Modelo original em Draco -- 1,28 mil triangulos, 6,7 MB. E o mesmo arquivo do
-   site da Tornaria Zico, sem reducao: as versoes simplificadas que testei
-   perdiam detalhe visivel das correntes e do motorredutor. */
+   site da Tornaria Zico, sem reducao: as versoes muito simplificadas perdiam
+   detalhe visivel das correntes e do motorredutor.
+
+   No celular entra uma versao reduzida (1,8 MB, 300 mil triangulos): os 6,7 MB
+   sao pesado demais para 4G e o quadro ficava cinza. A diferenca de detalhe
+   nestao tamanho so aparece girando muito perto. */
 const loader = new THREE.GLTFLoader();
 if (window.THREE.DRACOLoader) {
   const draco = new THREE.DRACOLoader();
@@ -97,9 +101,19 @@ if (window.THREE.DRACOLoader) {
   loader.setDRACOLoader(draco);
 }
 
-const SRC_MODEL = "assets/models/hero.glb";
+const isMobileView = COARSE.matches || innerWidth < 900;
+const SRC_MODEL = isMobileView ? "assets/models/hero-mobile.glb" : "assets/models/hero.glb";
+const MB = isMobileView ? 1.8 : 6.7;
 
 loader.load(SRC_MODEL, onModel, onProgress, onError);
+
+  /* O aviso nao bloqueia: se o modelo chegar depois, ele carrega do mesmo jeito.
+     Serve para o usuario saber que a espera e o download, e nao um erro. */
+  let settled = false;
+  const giveUp = setTimeout(function () {
+    if (settled) return;
+    if (status) status.textContent = "3D carregando devagar — o arquivo tem " + MB + " MB";
+  }, isMobileView ? 15000 : 10000);
 
   function onProgress(ev) {
     if (!ev.total || !status) return;
@@ -108,8 +122,11 @@ loader.load(SRC_MODEL, onModel, onProgress, onError);
   }
 
   function onError(err) {
+    settled = true;
+    clearTimeout(giveUp);
     host.classList.add("is-fallback");
-    if (status) status.textContent = "";
+    if (status) status.textContent = "3D indisponivel neste aparelho";
+    if (window.console && console.warn) console.warn("[hero3d]", err);
   }
 
   /* Caixa que contem 96% dos vertices, em vez da que contem 100%.
@@ -149,6 +166,8 @@ loader.load(SRC_MODEL, onModel, onProgress, onError);
   }
 
   function onModel(gltf) {
+    settled = true;
+    clearTimeout(giveUp);
     model = gltf.scene;
 
     /* As cores e o acabamento originais sao preservados: e o que faz o modelo
